@@ -1,0 +1,172 @@
+{
+  "info": {
+    "name": "Self-Healing Service",
+    "description": "Colección completa del microservicio de self-healing de selectores web.\n\nVariables de entorno recomendadas:\n  - base_url  → http://localhost:8765\n  - project   → nombre del proyecto consumidor",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:8765", "type": "string" },
+    { "key": "project",  "value": "mi_proyecto",           "type": "string" }
+  ],
+  "item": [
+
+    {
+      "name": "Monitor",
+      "item": [
+        {
+          "name": "Health check",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/health",
+            "description": "Verifica que el servicio está operativo. Úsalo como probe de liveness."
+          }
+        },
+        {
+          "name": "Métricas del proyecto",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/metrics/{{project}}",
+            "description": "Estadísticas de sanaciones: total, distribución por motor (DOM/CV) y confianza promedio."
+          }
+        },
+        {
+          "name": "Historial de sanaciones",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{base_url}}/history/{{project}}?limit=50",
+              "query": [
+                { "key": "limit",   "value": "50",      "description": "Máximo de registros (1-500)" },
+                { "key": "test_id", "value": "",         "description": "Filtra por test específico (opcional)", "disabled": true }
+              ]
+            },
+            "description": "Historial de sanaciones de un proyecto, ordenado por más reciente."
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "Baseline",
+      "item": [
+        {
+          "name": "Registrar baseline",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/baseline/register",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"selector_type\": \"xpath\",\n  \"selector_value\": \"//button[@id='btn-login']\",\n  \"screenshot_base64\": \"<base64_del_recorte_del_elemento>\",\n  \"test_id\": \"test_login\",\n  \"project\": \"{{project}}\",\n  \"element_meta\": {\n    \"tag\": \"button\",\n    \"id\": \"btn-login\",\n    \"name\": \"\",\n    \"text\": \"Iniciar sesión\",\n    \"classes\": [\"btn\", \"btn-primary\"],\n    \"aria_label\": \"\",\n    \"placeholder\": \"\",\n    \"parent_tag\": \"div\",\n    \"siblings_count\": 1,\n    \"type\": \"submit\",\n    \"role\": \"button\",\n    \"data_testid\": \"\"\n  }\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "description": "Registra la huella de un elemento cuando el selector funciona.\nSi ya existe un baseline para ese selector en ese proyecto, lo sobreescribe.\n\nLlamar UNA VEZ por selector al inicio de la suite de tests (o cuando el elemento cambia intencionalmente)."
+          }
+        },
+        {
+          "name": "Listar baselines del proyecto",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/baseline/{{project}}",
+            "description": "Lista todos los baselines registrados para un proyecto con su heal_count."
+          }
+        },
+        {
+          "name": "Consultar baseline por selector",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/baseline/{{project}}/%2F%2Fbutton%5B%40id%3D'btn-login'%5D",
+            "description": "Consulta el baseline de un selector específico.\nEl selector va URL-encoded en el path: //button[@id='x'] → %2F%2Fbutton%5B%40id%3D'x'%5D"
+          }
+        },
+        {
+          "name": "Eliminar baseline",
+          "request": {
+            "method": "DELETE",
+            "url": "{{base_url}}/baseline/{{project}}/%2F%2Fbutton%5B%40id%3D'btn-login'%5D",
+            "description": "Elimina el baseline de un selector y borra su snapshot PNG de disco.\nÚtil cuando un elemento desaparece definitivamente de la UI.\nDevuelve 204 si se eliminó, 404 si no existía."
+          }
+        },
+        {
+          "name": "Limpiar snapshots huérfanos",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/baseline/{{project}}/cleanup",
+            "description": "Elimina archivos PNG en disco que ya no tienen fila en BD para el proyecto.\nLlamar periódicamente o tras eliminar baselines en lote."
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "Self-Healing",
+      "item": [
+        {
+          "name": "Sanar selector (solo DOM)",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/heal",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"selector_type\": \"xpath\",\n  \"selector_value\": \"//button[@id='btn-login']\",\n  \"dom_html\": \"<html><body><button id='btn-login-v2' class='btn btn-primary' type='submit'>Iniciar sesión</button></body></html>\",\n  \"test_id\": \"test_login\",\n  \"project\": \"{{project}}\",\n  \"scoring_profile\": \"default\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "description": "Intenta reparar un selector roto usando el motor DOM.\nNo incluye screenshot_base64 → el motor CV no se activa.\n\nPerfiles de scoring disponibles:\n  - default  → apps estándar (prioriza id, name, text)\n  - siebel   → Siebel CRM (prioriza text, aria_label)\n  - angular  → React/Angular/Vue (prioriza data-testid)\n  - legacy   → Struts/JSF/WebForms (prioriza name)"
+          }
+        },
+        {
+          "name": "Sanar selector (DOM + CV)",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/heal",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"selector_type\": \"xpath\",\n  \"selector_value\": \"//button[@id='btn-login']\",\n  \"dom_html\": \"<html><body><button id='btn-login-v2' class='btn btn-primary' type='submit'>Iniciar sesión</button></body></html>\",\n  \"screenshot_base64\": \"<base64_del_screenshot_completo_del_browser>\",\n  \"test_id\": \"test_login_cv\",\n  \"project\": \"{{project}}\",\n  \"scoring_profile\": \"default\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "description": "Intenta reparar usando DOM primero. Si falla o hay empate, escala al motor CV.\nRequiere screenshot_base64 para que CV pueda operar.\n\nSi CV responde con selector_type='coords', el cliente debe:\n  1. Parsear 'coords::320,480'\n  2. Ejecutar document.elementFromPoint(320, 480) en el browser\n  3. Construir el XPath desde ese nodo"
+          }
+        },
+        {
+          "name": "Sanar selector — perfil Siebel",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/heal",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"selector_type\": \"xpath\",\n  \"selector_value\": \"//input[@id='s_sweui_1_R3C4_1']\",\n  \"dom_html\": \"<html><body><input id='s_sweui_2_R3C4_1' aria-label='Nombre de usuario' placeholder='Usuario' type='text' /></body></html>\",\n  \"test_id\": \"test_siebel_login\",\n  \"project\": \"{{project}}\",\n  \"scoring_profile\": \"siebel\"\n}",
+              "options": { "raw": { "language": "json" } }
+            },
+            "description": "Ejemplo para aplicaciones Siebel donde los IDs son generados por sesión.\nUsa el perfil 'siebel' que prioriza aria_label y text sobre el id."
+          }
+        }
+      ]
+    },
+
+    {
+      "name": "IA — Pesos Adaptativos",
+      "item": [
+        {
+          "name": "Disparar aprendizaje",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/learn/{{project}}",
+            "description": "Fuerza el re-entrenamiento de los pesos del DOM scorer para el proyecto.\nAnaliza el historial de healing_events y ajusta qué atributos pesan más.\n\nSe ejecuta automáticamente cada 10 sanaciones DOM exitosas.\nUsar este endpoint para forzarlo manualmente o después de acumular muchos datos."
+          }
+        },
+        {
+          "name": "Ver pesos aprendidos",
+          "request": {
+            "method": "GET",
+            "url": "{{base_url}}/weights/{{project}}",
+            "description": "Devuelve los pesos actualmente activos para el proyecto.\nSi no hay pesos aprendidos, el servicio usa los pesos base del perfil 'default'.\n\nCampo 'sample_size': cuántos eventos se usaron para aprender.\nCampo 'avg_confidence': confianza promedio de esos eventos."
+          }
+        }
+      ]
+    }
+
+  ]
+}

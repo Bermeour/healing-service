@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -c ':*)",
+      "Bash(python -c \"import uvicorn\")",
+      "Bash(timeout 8 python run.py)"
+    ]
+  }
+}

@@ -1,0 +1,49 @@
+# ── Entorno Python ────────────────────────────────────────────────────────────
+.venv/
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+
+# ── Configuración local (contiene credenciales y rutas de máquina) ────────────
+.env
+# .env.example SÍ se sube — es la plantilla sin valores reales
+
+# ── Base de conocimiento (datos de runtime, no van en el repo) ────────────────
+healing_knowledge.db
+healing_knowledge.db-shm
+healing_knowledge.db-wal
+
+# ── Snapshots visuales (generados en runtime, pueden ser grandes) ─────────────
+baselines/
+
+# ── Logs ──────────────────────────────────────────────────────────────────────
+logs/
+*.log
+
+# ── Tests ─────────────────────────────────────────────────────────────────────
+.pytest_cache/
+.coverage
+htmlcov/
+coverage.xml
+
+# ── Build / distribución ──────────────────────────────────────────────────────
+dist/
+build/
+*.egg-info/
+*.egg
+
+# ── IDEs ──────────────────────────────────────────────────────────────────────
+.idea/
+.vscode/
+*.iml
+
+# ── Sistema operativo ─────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── Modelos CV (archivos grandes, gestionar con Git LFS si se necesitan) ──────
+*.onnx
+*.weights
+*.cfg
