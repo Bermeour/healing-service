@@ -70,25 +70,27 @@ class TestScoreCandidate:
 class TestDOMExtractor:
 
     def test_extracts_correct_tag(self, sample_dom):
-        candidates = parse_dom(sample_dom, "button")
+        _, candidates = parse_dom(sample_dom, "button")
         assert len(candidates) == 2
         assert all(c["tag"] == "button" for c in candidates)
 
     def test_extracts_id(self, sample_dom):
-        candidates = parse_dom(sample_dom, "button")
+        _, candidates = parse_dom(sample_dom, "button")
         ids = [c["id"] for c in candidates]
         assert "btn-submit" in ids
 
     def test_extracts_classes(self, sample_dom):
-        candidates = parse_dom(sample_dom, "button")
+        _, candidates = parse_dom(sample_dom, "button")
         submit = next(c for c in candidates if c["id"] == "btn-submit")
         assert "btn-primary" in submit["classes"]
 
     def test_empty_dom_returns_empty(self):
-        assert parse_dom("", "button") == []
+        _, candidates = parse_dom("", "button")
+        assert candidates == []
 
     def test_tag_not_present_returns_empty(self, sample_dom):
-        assert parse_dom(sample_dom, "select") == []
+        _, candidates = parse_dom(sample_dom, "select")
+        assert candidates == []
 
 
 # ── xpath_builder ─────────────────────────────────────────────────────────────

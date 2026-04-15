@@ -108,6 +108,12 @@ class HealingArbitrator:
             "screenshot_b64": request.screenshot_base64,
             "scoring_profile": getattr(request, "scoring_profile", "default"),
             "learned_weights": learned_weights,
+            # filtros de contexto (opcionales, vacíos por defecto)
+            "exclude_ids":     getattr(request, "exclude_ids", []),
+            "container_id":    getattr(request, "container_id", None),
+            "container_class": getattr(request, "container_class", None),
+            "form_id":         getattr(request, "form_id", None),
+            "anchors":         getattr(request, "anchors", []),
         }
 
         last_scores: dict[str, float] = {}
@@ -172,7 +178,7 @@ class HealingArbitrator:
             from app.engines.base import ElementBaseline
 
             baseline: ElementBaseline = context["baseline"]
-            candidates = parse_dom(request.dom_html, baseline.tag)
+            _, candidates = parse_dom(request.dom_html, baseline.tag)
 
             # Busca el candidato que generó el new_selector
             # Comparamos reconstruyendo el xpath — buscamos el nodo más probable
